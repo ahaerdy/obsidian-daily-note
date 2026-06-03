@@ -7,10 +7,12 @@
 ## Índice
 
 - [Sobre o Projeto](#sobre-o-projeto)
+- [Decisão de Design](#decisão-de-design)
 - [Como Funciona](#como-funciona)
 - [Arquitetura](#arquitetura)
 - [Pré-requisitos](#pré-requisitos)
 - [Configuração](#configuração)
+- [Instalação](#instalação)
 - [Compilação e Execução](#compilação-e-execução)
 - [Conceitos Java Aplicados](#conceitos-java-aplicados)
 - [Estrutura de Pastas](#estrutura-de-pastas)
@@ -27,6 +29,16 @@ A ferramenta lê duas variáveis de ambiente, calcula o caminho correto para a n
 - ✅ Informa se a nota já existe (nenhuma ação tomada).
 - 📁 Cria a estrutura de pastas `ano/mês/` automaticamente, se necessário.
 - 📋 Copia o template configurado para o local correto com o nome `AAAAMMDD.md`.
+
+---
+
+## Decisão de Design
+
+A automação descrita neste projeto poderia ser implementada com menos linhas de código em Python ou diretamente em Shell Script. A implementação em Java foi uma escolha deliberada, com objetivos técnicos específicos:
+
+- **Explorar a API `java.nio.file`** — pacote NIO (*New I/O*), introduzido no Java 7 e consolidado no Java 8, que oferece uma abstração moderna e multiplataforma para operações de sistema de arquivos. O uso de `Path`, `Files` e `StandardCopyOption` demonstra o modelo correto de I/O em Java, em contraste com a API legada `java.io.File`.
+- **Praticar o tratamento de exceções verificadas** (*checked exceptions*) — ao contrário de linguagens que tratam erros como valores opcionais, o Java impõe em tempo de compilação o tratamento de `IOException`, tornando explícito o contrato de que operações de I/O podem falhar. Este projeto exercita esse mecanismo em um contexto real.
+- **Demonstrar o ciclo completo de uma ferramenta Java em produção** — da escrita do código-fonte, passando pela compilação com `javac` e empacotamento em JAR, até a integração com o ambiente Linux por meio de um wrapper shell, alias e agendamento via `cron`. O objetivo é percorrer todo o pipeline que transforma código Java em uma ferramenta operacional no sistema.
 
 ---
 
@@ -121,6 +133,98 @@ Após editar o arquivo, recarregue as configurações:
 ```bash
 source ~/.zshrc   # ou source ~/.bashrc
 ```
+
+---
+
+## Instalação
+
+Para uso no dia a dia, o objetivo é transformar a ferramenta em um **comando de uma palavra** — disponível em qualquer diretório, utilizável em batch scripts e agendável via `cron`. O processo envolve três etapas: compilar, empacotar em JAR e registrar um wrapper no sistema.
+
+### Passo 1 — Compilar os fontes
+
+```bash
+cd obsidian-daily-note-initializer/src/main/java
+javac GerenciadorDiario.java Main.java
+```
+
+Isso gera os arquivos `Main.class` e `GerenciadorDiario.class` no mesmo diretório.
+
+### Passo 2 — Empacotar em um JAR executável
+
+Um JAR (*Java ARchive*) é um arquivo `.zip` que empacota todos os `.class` do projeto junto com um **manifest** — um arquivo de metadados que declara qual classe contém o método `main`. Com isso, a JVM sabe onde iniciar a execução sem que o usuário precise informar.
+
+```bash
+# Ainda dentro de src/main/java/
+echo "Main-Class: Main" > MANIFEST.MF
+jar cfm nota-diaria.jar MANIFEST.MF *.class
+```
+
+Mova o JAR para um local permanente (sugestão):
+
+```bash
+mkdir -p ~/.local/lib
+mv nota-diaria.jar ~/.local/lib/nota-diaria.jar
+```
+
+### Passo 3 — Criar o wrapper shell
+
+Ferramentas Java de produção (Maven, Gradle, Kotlin CLI) são distribuídas exatamente assim: um shell script de uma linha que invoca `java -jar` internamente. O usuário final nunca vê isso.
+
+Crie o arquivo `~/.local/bin/nota`:
+
+```bash
+mkdir -p ~/.local/bin
+
+cat > ~/.local/bin/nota << 'EOF'
+#!/bin/bash
+java -jar "$HOME/.local/lib/nota-diaria.jar"
+EOF
+
+chmod +x ~/.local/bin/nota
+```
+
+Garanta que `~/.local/bin` está no seu `$PATH`. Adicione ao `~/.zshrc` ou `~/.bashrc` se necessário:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Recarregue o shell:
+
+```bash
+source ~/.zshrc   # ou source ~/.bashrc
+```
+
+### Resultado
+
+A partir deste ponto, o comando `nota` está disponível globalmente:
+
+```bash
+nota
+```
+
+E pode ser usado normalmente em batch scripts:
+
+```bash
+#!/bin/bash
+nota
+# demais comandos do seu workflow matinal...
+```
+
+### Automação com cron
+
+Para executar automaticamente toda manhã, sem nenhuma intervenção manual:
+
+```bash
+crontab -e
+```
+
+```
+# Cria a nota diária todos os dias às 07:00
+0 7 * * * /bin/bash -l -c 'nota'
+```
+
+> **Por que `/bin/bash -l -c`?** O `cron` executa comandos em um ambiente mínimo, sem carregar o `~/.zshrc` ou `~/.bashrc`. A flag `-l` (*login shell*) força o carregamento do perfil completo do usuário, garantindo que as variáveis `$diario` e `$diario_template` estejam disponíveis.
 
 ---
 
@@ -221,8 +325,7 @@ Possíveis evoluções para versões futuras:
 - [ ] **Suporte a argumentos CLI** — permitir passar uma data específica como argumento (`java Main 2026-06-10`).
 - [ ] **Múltiplos templates** — selecionar o template com base no dia da semana.
 - [ ] **Testes unitários** — adicionar JUnit 5 para testar `GerenciadorDiario` com um sistema de arquivos em memória.
-- [ ] **Build com Maven/Gradle** — empacotar em um `.jar` executável com um único comando.
-- [ ] **Integração com shell** — criar um alias `nota` no `.zshrc` que compila e executa automaticamente.
+- [ ] **Build com Maven/Gradle** — substituir o processo manual de `javac` + `jar` por um build declarativo (`mvn package`) que gera o JAR com todas as dependências automaticamente.
 
 ---
 
