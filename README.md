@@ -328,5 +328,3 @@ Possíveis evoluções para versões futuras:
 - [ ] **Build com Maven/Gradle** — substituir o processo manual de `javac` + `jar` por um build declarativo (`mvn package`) que gera o JAR com todas as dependências automaticamente.
 
 ---
-
-*Desenvolvido como projeto de aprendizado de Java — do script funcional à arquitetura orientada a objetos.*

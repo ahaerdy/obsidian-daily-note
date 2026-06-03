@@ -1,0 +1,43 @@
+# =========================================================================
+# Artefatos de Compilação e Distribuição (Java / CLI)
+# =========================================================================
+# Ignora arquivos compilados e binários gerados localmente no processo de build
+*.class
+*.jar
+*.war
+*.ear
+
+# Pastas de build de ferramentas de automação (Maven / Gradle / IDEs)
+target/
+bin/
+build/
+.gradle/
+out/
+
+# =========================================================================
+# Configurações do Ambiente Local e IDEs
+# =========================================================================
+# Ignora configurações de IDE (IntelliJ, Eclipse, VS Code) que contêm caminhos locais
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+*.sublime-workspace
+
+# Arquivos de variáveis de ambiente locais (caso use arquivos .env para simular as variáveis do S.O.)
+.env
+.env.local
+
+# =========================================================================
+# Sistema Operacional e Arquivos Temporários
+# =========================================================================
+# Arquivos de sistema que o Linux/Ubuntu ou Windows geram ao abrir pastas
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+*.log
+
+
