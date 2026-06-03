@@ -1,135 +1,101 @@
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.io.IOException; // DECLARAÇÃO de classe concreta de exceção checada. Usada para instanciar objetos de erro na Heap em falhas de I/O.
+import java.nio.file.Files; // Referencia classe utilitária com Métodos Estáticos (métodos de classe) para operações diretas no disco.
+import java.nio.file.Path; // Referencia uma INTERFACE (Contrato Polimórfico). Define comportamento sem instanciar objetos diretamente via 'new'.
+import java.nio.file.Paths; // Referencia classe de fábrica com Métodos Estáticos para instanciar classes concretas que implementam Path.
+import java.nio.file.StandardCopyOption; // Referencia tipo ENUM. Seus elementos são instanciados como objetos estáticos na inicialização da JVM.
+import java.time.LocalDate; // Referencia classe de dados temporais imutáveis. Instâncias na Heap são geradas por métodos estáticos de fábrica.
+import java.time.format.DateTimeFormatter; // Referencia classe que armazena na Heap o estado dos interpretadores e formatadores de padrões de data.
 
-/**
- * Núcleo do sistema — gerencia todo o ciclo de vida da nota diária.
- *
- * <p>Esta classe encapsula três responsabilidades coesas:
- * <ol>
- *   <li>Calcular os caminhos de origem (template) e destino (nota do dia).</li>
- *   <li>Verificar se a nota diária já existe no cofre do Obsidian.</li>
- *   <li>Criar a estrutura de pastas e copiar o template, se necessário.</li>
- * </ol>
- *
- * <p><b>Estrutura de pastas gerada no cofre:</b>
- * <pre>
- *   {diario}/
- *   └── 2026/
- *       └── 06/
- *           └── 20260603.md
- * </pre>
- */
 public class GerenciadorDiario {
 
-    // --- Formatadores de data (constantes de classe, criadas uma única vez) ---
+    // --- CONSTANTES DE CLASSE (Escopo Estático) ---
 
-    /** Formata o ano como string de 4 dígitos. Ex: "2026" */
+    // DECLARAÇÃO de referência estática na Metaspace. INSTANCIAÇÃO de um DateTimeFormatter na Heap via método de classe .ofPattern(). final fixa o ponteiro.
     private static final DateTimeFormatter FMT_ANO      = DateTimeFormatter.ofPattern("yyyy");
 
-    /** Formata o mês como string de 2 dígitos com zero à esquerda. Ex: "06" */
+    // DECLARAÇÃO de segunda referência estática. Nova INSTANCIAÇÃO na Heap de um objeto DateTimeFormatter independente.
     private static final DateTimeFormatter FMT_MES      = DateTimeFormatter.ofPattern("MM");
 
-    /** Formata a data completa para compor o nome do arquivo. Ex: "20260603" */
+    // DECLARAÇÃO de terceira referência estática. Terceira INSTANCIAÇÃO de DateTimeFormatter isolada na Heap.
     private static final DateTimeFormatter FMT_ARQUIVO  = DateTimeFormatter.ofPattern("yyyyMMdd");
 
-    // --- Estado da instância ---
+    // --- ESTADO DA INSTÂNCIA (Atributos de Objeto) ---
 
-    /** Caminho raiz do cofre do Obsidian, lido da variável de ambiente {@code diario}. */
+    // DECLARAÇÃO de atributo por Interface (Polimorfismo). O ponteiro existirá dentro do corpo de cada objeto GerenciadorDiario alocado na Heap.
     private final Path caminhoBase;
 
-    /** Caminho completo para o arquivo de template, lido da variável {@code diario_template}. */
+    // DECLARAÇÃO de segundo atributo por Interface. Espaço reservado na Heap (dentro do objeto) para armazenar endereço de classe concreta.
     private final Path caminhoTemplate;
 
-    // -------------------------------------------------------------------------
+    // --- CONSTRUTOR ---
 
-    /**
-     * Constrói o gerenciador com as configurações do ambiente.
-     *
-     * @param caminhoBaseStr     String com o caminho raiz do cofre (variável {@code diario}).
-     * @param caminhoTemplateStr String com o caminho do template (variável {@code diario_template}).
-     */
+    // Chamada aloca um Frame na Stack. Variáveis locais (parâmetros) recebem cópias dos ponteiros das Strings vindas do String Pool (Heap).
     public GerenciadorDiario(String caminhoBaseStr, String caminhoTemplateStr) {
-        // Paths.get() é um método fábrica multiplataforma: converte Strings em objetos Path
-        // que funcionam corretamente em Linux, macOS e Windows.
+
+        // Chamada de método estático de fábrica (Paths.get). A JDK avalia o S.O. e instancia uma CLASSE CONCRETA (ex: UnixPath) na Heap.
+        // O endereço retornado é gravado no ponteiro "this.caminhoBase" localizado dentro do objeto na Heap.
         this.caminhoBase     = Paths.get(caminhoBaseStr);
+
+        // Nova chamada ao método estático. Segunda instanciação de CLASSE CONCRETA (ex: UnixPath) na Heap.
+        // O ponteiro resultante é gravado em "this.caminhoTemplate" na Heap. O Frame do construtor é desalocado da Stack após o fechamento da chave.
         this.caminhoTemplate = Paths.get(caminhoTemplateStr);
     }
 
-    // -------------------------------------------------------------------------
+    // --- MÉTODOS DE INSTÂNCIA PRINCIPAIS ---
 
-    /**
-     * Executa o fluxo completo de verificação e criação da nota diária.
-     *
-     * <p>Fluxo de decisão:
-     * <pre>
-     *   Nota já existe? ──► SIM  ──► Informa o usuário e encerra.
-     *        │
-     *       NÃO
-     *        │
-     *   Template existe? ──► NÃO ──► Lança erro crítico e encerra.
-     *        │
-     *       SIM
-     *        │
-     *   Cria pastas + copia template ──► Confirma criação.
-     * </pre>
-     *
-     * @throws IOException se ocorrer falha de leitura/escrita no sistema de arquivos.
-     */
+    // Invocação exige um objeto ativo na Heap. Cria um Frame de execução na Stack, contendo o ponteiro implícito "this".
     public void executar() throws IOException {
+
+        // DECLARAÇÃO da referência "hoje" na Stack. Método estático .now() captura dados do S.O., INSTANCIA um LocalDate na Heap e devolve o endereço.
         LocalDate hoje = LocalDate.now();
 
-        // Resolve o caminho completo da nota com base na data atual
+        // DECLARAÇÃO de referência "caminhoNota" na Stack. Método de instância é chamado, gerando um novo objeto Path na Heap e retornando seu ponteiro.
         Path caminhoNota = resolverCaminhoNota(hoje);
 
+        // Acesso ao campo estático System.out (PrintStream na Heap). Método de instância .toAbsolutePath() do objeto caminhoTemplate cria e retorna um NOVO objeto Path (caminho absoluto) na Heap.
+        // A JVM instancia implicitamente um StringBuilder na Heap para concatenar o literal com a String do objeto Path, enviando a String final para o println.
         System.out.println("📄 Template   : " + caminhoTemplate.toAbsolutePath());
         System.out.println("🔍 Nota do dia: " + caminhoNota.toAbsolutePath());
 
+        // Chamada de método estático (Files.exists) passando o ponteiro "caminhoNota". Ele varre o disco e RETORNA UM TIPO PRIMITIVO (boolean) direto para avaliação na Stack.
         if (Files.exists(caminhoNota)) {
             System.out.println("✅ A nota diária de hoje já existe. Nenhuma ação necessária.");
+            // Controle de fluxo. Interrompe a execução e limpa imediatamente o Frame de "executar" da Stack, liberando as referências locais.
             return;
         }
 
         System.out.println("📭 Nota ainda não existe. Iniciando criação...");
+
+        // Chamada de método de instância privado. Passa uma cópia do ponteiro "caminhoNota" da Stack. Aloca novo Frame para "criarNota" na Stack.
         criarNota(caminhoNota);
     }
 
-    // -------------------------------------------------------------------------
-    // MÉTODOS PRIVADOS DE SUPORTE
-    // -------------------------------------------------------------------------
+    // --- MÉTODOS PRIVADOS DE SUPORTE (Mecânica de Instância) ---
 
-    /**
-     * Monta o caminho completo para a nota do dia a partir de uma data.
-     *
-     * <p>Exemplo: {@code /cofre/2026/06/20260603.md}
-     *
-     * @param data A data para a qual o caminho deve ser calculado.
-     * @return Um objeto {@link Path} com o caminho absoluto da nota.
-     */
+    // Cria Frame na Stack. O parâmetro "data" recebe o endereço do objeto LocalDate que está na Heap.
     private Path resolverCaminhoNota(LocalDate data) {
+
+        // DECLARAÇÃO de referência "ano" na Stack. Método de instância .format() lê o LocalDate na Heap usando a constante estática FMT_ANO e RETORNA UM NOVO OBJETO String na Heap.
         String ano          = data.format(FMT_ANO);
+
+        // DECLARAÇÃO de "mes" na Stack. Segunda execução de método de instância gerando uma NOVA String na Heap.
         String mes          = data.format(FMT_MES);
+
+        // DECLARAÇÃO de "nomeArquivo" na Stack. O método de instância gera uma String. O operador "+" força a JVM a instanciar um StringBuilder na Heap para fundir o resultado com o literal ".md", gerando uma String final na Heap.
         String nomeArquivo  = data.format(FMT_ARQUIVO) + ".md";
 
-        // Paths.get(base, partes...) constrói o caminho de forma segura e multiplataforma,
-        // equivalente a: caminhoBase + "/" + ano + "/" + mes + "/" + nomeArquivo
+        // Método de instância caminhoBase.toString() gera uma String. Método estático Paths.get() recebe os 4 ponteiros de Strings da Stack, instancia uma nova CLASSE CONCRETA de Path na Heap e RETORNA o endereço.
+        // O Frame atual é destruído na Stack; strings locais intermediárias sem ponteiro viram alvo do Garbage Collector.
         return Paths.get(caminhoBase.toString(), ano, mes, nomeArquivo);
     }
 
-    /**
-     * Valida o template, cria os diretórios necessários e copia o arquivo.
-     *
-     * @param destino O caminho onde a nova nota deve ser criada.
-     * @throws IOException se o template não existir ou se a cópia falhar.
-     */
+    // Cria Frame na Stack. O parâmetro "destino" é uma referência local que aponta para o Path gerado no método anterior.
     private void criarNota(Path destino) throws IOException {
+
+        // Chamada de método estático Files.exists. Passa o ponteiro do atributo "caminhoTemplate" (buscado na Heap via "this"). Retorna primitivo boolean negado pelo operador "!" na Stack.
         if (!Files.exists(caminhoTemplate)) {
-            // Lança uma exceção com mensagem clara em vez de apenas imprimir e retornar,
-            // permitindo que o chamador (Main) decida como tratar o erro.
+            // Concatenação gera String na Heap. A palavra-chave "new" força a INSTANCIAÇÃO real de um objeto IOException na Heap.
+            // O "throw" interrompe o fluxo e ejeta o endereço desse objeto de erro para desempilhar a Stack até achar um catch.
             throw new IOException(
                     "Template não encontrado em: " + caminhoTemplate.toAbsolutePath()
             );
@@ -137,15 +103,17 @@ public class GerenciadorDiario {
 
         System.out.println("⚙️  Criando estrutura de pastas...");
 
-        // getParent() extrai apenas o diretório pai do arquivo (ex: /cofre/2026/06/).
-        // createDirectories() cria toda a árvore de pastas de uma vez, sem lançar
-        // exceção caso os diretórios já existam (comportamento idempotente).
+        // Método de instância destino.getParent() avalia o objeto na Heap e RETORNA UM NOVO objeto Path (apenas os diretórios pai).
+        // Esse ponteiro temporário alimenta o método estático Files.createDirectories, que cria as pastas físicas no disco (sem atribuição de retorno).
         Files.createDirectories(destino.getParent());
 
-        // Copia o template para o destino final.
-        // COPY_ATTRIBUTES preserva os metadados do arquivo original (timestamps, permissões).
+        // Chamada de método estático utilitário. Recebe três referências: o atributo da Heap, a variável local da Stack e o Enum StandardCopyOption (objeto estático pré-alocado na inicialização da JVM).
+        // Files.copy extrai as classes concretas por trás das interfaces de Path e opera direto a nível de sistema operacional.
         Files.copy(caminhoTemplate, destino, StandardCopyOption.COPY_ATTRIBUTES);
 
+        // Método de instância destino.getFileName() RETORNA UM NOVO objeto Path isolando o nome do arquivo na Heap. Ele é convertido/concatenado e enviado ao PrintStream.
         System.out.println("✨ Nota criada com sucesso: " + destino.getFileName());
+
+        // Fim do escopo do método. Frame de "criarNota" é desempilhado da Stack. O fluxo retorna e encerra "executar()", limpando a Stack restante.
     }
 }
