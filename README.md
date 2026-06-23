@@ -1,6 +1,6 @@
 # 📓 Obsidian Daily Note
 
-> Ferramenta CLI em Java que automatiza a criação da nota diária no Obsidian — verificando se ela já existe e, caso contrário, copiando o seu template para a pasta correta com o nome baseado na data de hoje.
+> Ferramenta CLI em Java que automatiza a criação da nota diária no Obsidian — verificando se ela já existe e, caso contrário, copiando o seu template para a pasta correta com o nome baseado na data da execução.
 
 ---
 
